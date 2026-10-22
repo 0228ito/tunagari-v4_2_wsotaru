@@ -1178,7 +1178,7 @@
       comment:       { icon: "chat",             mineLabel: "あなたの投稿にコメントが届きました", otherLabel: "コメントが届きました", badge: "新しいコメント" },
       thanks_post:   { icon: "favorite",         mineLabel: "あなたの投稿に「助かった！」", otherLabel: "「助かった！」が付きました", badge: "助かった！" },
       thanks_answer: { icon: "favorite",         mineLabel: "あなたの回答に「助かった！」", otherLabel: "「助かった！」が付きました", badge: "助かった！" },
-      best:          { icon: "workspace_premium", mineLabel: "あなたの回答がベストアンサーに選ばれました", otherLabel: "ベストアンサーが決まりました", badge: "ベストアンサー" },
+      best:          { icon: "workspace_premium", mineLabel: "あなたの回答が「いちばん助かった」に選ばれました", otherLabel: "「いちばん助かった」回答が決まりました", badge: "いちばん助かった" },
       ai:            { icon: "auto_awesome",     mineLabel: "AIからひとこと", otherLabel: "AIからひとこと", badge: "AIから" },
       digest:        { icon: "school",           mineLabel: "学部の新着まとめ", otherLabel: "学部の新着まとめ", badge: "学部の新着" }
     };
@@ -1677,7 +1677,7 @@
             {isQ && (post.bestAnswerId ? <SolvedBadge /> : (
               <span className={cx("inline-flex items-center gap-1 text-[11px] font-bold", post.commentsCount ? "text-sub" : "text-brand-deep")}>
                 <Icon n="forum" size={14} />{post.commentsCount ? `回答 ${post.commentsCount}` : "回答募集中"}
-                {mine && post.commentsCount > 0 && <span className="text-love-ink ml-1">BA未選択</span>}
+                {mine && post.commentsCount > 0 && <span className="text-love-ink ml-1">まだ選んでいません</span>}
               </span>
             ))}
             {!isQ && mine && post.commentsCount > 0 && (
@@ -1712,7 +1712,7 @@
               <span></span>
             )}
             {mine
-              ? <span className="flex-shrink-0 border border-brand text-brand-deep text-[12px] font-black px-3 py-1.5 rounded-full">{post.commentsCount ? "BAを選ぶ" : "確認する"}</span>
+              ? <span className="flex-shrink-0 border border-brand text-brand-deep text-[12px] font-black px-3 py-1.5 rounded-full">{post.commentsCount ? "1つ選ぶ" : "確認する"}</span>
               : <span className="flex-shrink-0 bg-brand text-on-brand text-[12px] font-black px-3 py-1.5 rounded-full">答える</span>}
           </span>
         </button>
@@ -1769,7 +1769,7 @@
 
     // ≡ メニュー（全画面。右から開き、×で閉じる）
     const NOTIF_PREF_ITEMS = [
-      { key: "answer", label: "自分の質問への回答", sub: "ベストアンサーの選択も含む" },
+      { key: "answer", label: "自分の質問への回答", sub: "「いちばん助かった」の選択も含む" },
       { key: "thanks", label: "「助かった！」が付いたとき", sub: "自分の記事・回答" },
       { key: "comment", label: "自分の記事へのコメント" },
       { key: "watch", label: "「気になる」した質問の更新" },
@@ -1789,7 +1789,7 @@
         ["ポイントはどうやって貯まる？", "記事の投稿で+10pt、質問への回答で+3pt、「助かった！」を押すと+1ptです。"],
         ["ポイントは何に使える？", "楽天ポイントに交換できます（仮）。「交換」タブから選んでください。"],
         ["名前は表示される？", "表示されるのは学部・学年だけです。投稿や回答は匿名にもできます。"],
-        ["ベストアンサーとは？", "質問した人が、いちばん納得できた回答を1つ選ぶしくみです。選ぶと質問は解決済みになります。"],
+        ["「いちばん助かった」とは？", "質問した人が、いちばん助かった回答を1つ選ぶしくみです。選ぶと質問は解決済みになります。"],
         ["ほかの大学の人は見られる？", "見られません。大学のメールアドレスで確認した学生だけが使えます。"]
       ] },
       terms: { title: "利用規約", body: [["準備中", "正式な利用規約は準備中です（デモ版）。"]] },
@@ -2457,7 +2457,7 @@
 
           {s.best && (
             <div className="bg-surface rounded-2xl p-3 space-y-1">
-              <span className="text-[12px] font-black text-brand-deep flex items-center gap-1"><Icon n="favorite" fill size={14} />いちばん助かった回答</span>
+              <span className="text-[12px] font-black text-brand-deep flex items-center gap-1"><Icon n="favorite" fill size={14} />人気の回答</span>
               <p className="text-[13px] leading-relaxed">{s.best.text}</p>
             </div>
           )}
@@ -2817,7 +2817,7 @@
         setPosts(prev => prev.map(p => p.id === postId && !p.bestAnswerId ? { ...p, bestAnswerId: comment.id, bestThanks: baThanks.trim(), resolvedAt: Date.now() } : p));
         setBaTarget(null);
         setBaThanks("");
-        showToast("🏅 ベストアンサーを決定しました。質問は解決済みになりました");
+        showToast("🏅 「いちばん助かった」回答を選びました。質問は解決済みになりました");
       };
 
       const isSearching = searchQuery.trim() !== "" || selectedTag !== "" || onlyQuestions || onlyMyFaculty;
@@ -3572,7 +3572,7 @@
 
                     <div className="space-y-6">
                         {/* 回答を待っている質問
-                            ・ベストアンサーが決まった（解決済み）質問は出さない。自分の質問は出す
+                            ・「いちばん助かった」が決まった（解決済み）質問は出さない。自分の質問は出す
                             ・並び順：回答0件の質問が先 → その中で新しい順
                             ・該当がなければ、この枠ごと隠す */}
                         {waitingQuestions.length > 0 && (
@@ -3832,7 +3832,7 @@
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <MineBadge type={post.type} />
                             {isQ && post.bestAnswerId && <SolvedBadge />}
-                            {isQ && !post.bestAnswerId && post.commentsCount > 0 && <span className="text-[11px] font-black text-love-ink">ベストアンサー未選択</span>}
+                            {isQ && !post.bestAnswerId && post.commentsCount > 0 && <span className="text-[11px] font-black text-love-ink">まだ選んでいません</span>}
                           </div>
                           {label && <span className="bg-brand text-on-brand text-[11px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0"><Icon n="notifications_active" fill size={12} />{label}</span>}
                         </div>
@@ -3860,7 +3860,7 @@
                           <div className="flex justify-between items-center gap-2">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <MineBadge type="answer" />
-                              {isBA && <span className="inline-flex items-center gap-0.5 bg-brand text-on-brand text-[11px] font-black px-2 py-0.5 rounded-full"><Icon n="workspace_premium" fill size={13} />ベストアンサー</span>}
+                              {isBA && <span className="inline-flex items-center gap-0.5 bg-brand text-on-brand text-[11px] font-black px-2 py-0.5 rounded-full"><Icon n="workspace_premium" fill size={13} />いちばん助かった</span>}
                             </div>
                             {label && <span className="bg-brand text-on-brand text-[11px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 flex-shrink-0"><Icon n="notifications_active" fill size={12} />{label}</span>}
                           </div>
@@ -4230,7 +4230,7 @@
                   {isQuestion && isMine(selectedPost.author) && !selectedPost.bestAnswerId && selectedPost.comments.some(c => !isMine(c.user)) && (
                     <div className="bg-brand-tint rounded-2xl px-3.5 py-3 text-[12.5px] text-brand-deep font-bold flex items-start gap-2">
                       <Icon n="workspace_premium" fill size={18} className="flex-shrink-0" />
-                      <span>いちばん納得できた回答を「ベストアンサー」に選ぶと、質問は解決済みになります</span>
+                      <span>いちばん助かった回答を1つ選ぶと、質問は解決済みになります</span>
                     </div>
                   )}
                   {isQuestion && selectedPost.ai && <AiAnswerCard key={selectedPost.id} ai={selectedPost.ai} hasStudentAnswers={hasStudentAnswers} />}
@@ -4274,12 +4274,12 @@
                           >
                             {isBA && (
                               <span className="inline-flex items-center gap-1 bg-brand text-on-brand text-[12px] font-black px-2.5 py-0.5 rounded-full">
-                                <Icon n="workspace_premium" fill size={14} />ベストアンサー
+                                <Icon n="workspace_premium" fill size={14} />いちばん助かった
                               </span>
                             )}
                             {topThanks && (
                               <span className="inline-flex items-center gap-1 text-love-ink text-[12px] font-black">
-                                <Icon n="favorite" fill size={14} />いちばん助かった
+                                <Icon n="favorite" fill size={14} />{isQuestion ? "人気の回答" : "人気のコメント"}
                               </span>
                             )}
                             <div className="flex items-center gap-2">
@@ -4295,7 +4295,7 @@
                             )}
                             {canPickBA && (
                               <button onClick={() => { setBaThanks(""); setBaTarget({ postId: selectedPost.id, comment: c }); }} className="w-full border-[1.5px] border-brand text-brand-deep font-black text-[13px] py-2 rounded-2xl flex items-center justify-center gap-1 press">
-                                <Icon n="workspace_premium" size={17} />ベストアンサーに選ぶ
+                                <Icon n="workspace_premium" size={17} />「いちばん助かった」に選ぶ
                               </button>
                             )}
                             <div className="flex justify-between items-center">
@@ -4982,13 +4982,13 @@
             />
           )}
 
-          {/* 🏅 ベストアンサーの確認（選び直しはできない） */}
+          {/* 🏅 「いちばん助かった」の確認（選び直しはできない） */}
           {baTarget && (
             <Dialog onClose={() => setBaTarget(null)} z={70}>
               <div className="p-5 space-y-4">
                 <div className="text-center space-y-1">
                   <Icon n="workspace_premium" fill size={36} className="text-brand" />
-                  <h3 className="font-head font-black text-[17px]">この回答をベストアンサーにしますか？</h3>
+                  <h3 className="font-head font-black text-[17px]">この回答を「いちばん助かった」に選びますか？</h3>
                 </div>
                 <p className="bg-sunk rounded-2xl p-3 text-[13px] leading-relaxed line-clamp-4">{baTarget.comment.text}</p>
                 <div>
