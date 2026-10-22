@@ -48,7 +48,7 @@
             'sky-ink': 'rgb(var(--sky-ink) / <alpha-value>)'
           },
           fontFamily: {
-            head: ['"Zen Maru Gothic"', '"Noto Sans JP"', 'sans-serif']
+            head: ['-apple-system', 'BlinkMacSystemFont', '"Hiragino Sans"', '"Hiragino Kaku Gothic ProN"', '"Yu Gothic UI"', 'Meiryo', 'system-ui', 'sans-serif']
           },
           boxShadow: {
             soft: 'var(--shadow-soft)',
@@ -60,8 +60,7 @@
   </script>
   <!-- アイコン（丸みのあるMaterial Symbols） -->
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
-  <!-- フォント：見出しは丸ゴシック（Zen Maru Gothic）、本文はNoto Sans JP -->
-  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- フォント：端末のシステムフォント（Webフォントは読み込まない） -->
   <!-- React & Babel Standalone -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
@@ -146,7 +145,7 @@
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html { background: rgb(var(--bg)); }
     body {
-      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
       background-color: rgb(var(--bg));
       color: rgb(var(--ink));
       font-size: 14px;
@@ -252,7 +251,7 @@
     //   ・URL末尾に ?univ=otaru を付けて開くと、ファイルを書き換えずに切り替えて確認できます
     //   ・新しい大学を足すときは UNIVERSITIES に1ブロック追加するだけです
     // ============================================================
-    const ACTIVE_UNIVERSITY = "hokudai";
+    const ACTIVE_UNIVERSITY = "otaru";
 
     const UNIVERSITIES = {
       hokudai: {
@@ -775,6 +774,22 @@
       }
     ];
     const STORES = Object.fromEntries(PARTNER_STORES.map(s => [s.id, s.name]));
+
+    // 🎁 WS版：ポイントの交換先（仮）＝楽天ポイント。交換レートはたたき（cost＝必要なTUNAGARIポイント、amount＝受け取る楽天ポイント）
+    const EXCHANGE_NAME = "楽天ポイント";
+    const EXCHANGE_PLANS = [
+      { id: "r50", cost: 100, amount: 50 },
+      { id: "r100", cost: 200, amount: 100 },
+      { id: "r300", cost: 500, amount: 300, badge: "おトク" }
+    ];
+    function PlanThumb({ plan, className }) {
+      return (
+        <span className={cx("bg-brand-tint text-brand-deep flex flex-col items-center justify-center leading-none", className)}>
+          <span className="font-head font-black text-[26px] tabular-nums">{plan.amount}</span>
+          <span className="text-[10px] font-bold mt-1">{EXCHANGE_NAME}</span>
+        </span>
+      );
+    }
     const storeById = (id) => PARTNER_STORES.find(s => s.id === id);
     // 今、営業中か（定休日・昼休みも考慮）
     function isOpenNow(store, ms = Date.now()) {
@@ -1275,7 +1290,6 @@
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
             <label className={LABEL} htmlFor="tag-input">ハッシュタグ（{tags.length}/{MAX}）</label>
-            <span className="text-[11px] text-mute">同じタグの投稿をまとめて探せます</span>
           </div>
           <div className="w-full bg-sunk rounded-2xl px-3 py-2 flex flex-wrap items-center gap-1.5 border border-transparent focus-within:border-brand focus-within:bg-surface transition-colors" onClick={() => { const el = document.getElementById("tag-input"); if (el) el.focus(); }}>
             {tags.map(t => (
@@ -1298,7 +1312,7 @@
           {suggestions.filter(t => !tags.includes(t)).length > 0 && tags.length < MAX && (
             <div className="flex flex-wrap gap-1.5">
               <span className="text-[11.5px] text-mute self-center mr-0.5">候補</span>
-              {suggestions.filter(t => !tags.includes(t)).slice(0, 6).map(t => (
+              {suggestions.filter(t => !tags.includes(t)).slice(0, 4).map(t => (
                 <button key={t} type="button" onClick={() => add(t)} className="border border-line text-sub text-[12px] font-bold px-2.5 py-1 rounded-full press">#{t}</button>
               ))}
             </div>
@@ -1331,15 +1345,8 @@
     };
     // 質問の「くわしい状況」の書き方の例（カテゴリごと）
     const DETAIL_PLACEHOLDER = {
-      "授業・過去問": "例）\n・今の状況：経済学部1年。後期の必修で友達と別クラス\n・困っていること：休んだ回の課題の出し方がわからない\n・知りたいこと：みんなはどうやって情報を集めているか",
-      "休講・掲示板": "例）\n・どの授業・建物か：理学部2号館の〇〇の授業\n・知りたいこと：今週の休講・補講が出ているか\n・確認済みのこと：公式ポータルはまだ更新なし",
-      "グルメ・学食": "例）\n・予算と時間：昼休み30分・600円以内\n・好み：がっつり食べたい／一人で入りやすい\n・知りたいこと：空いている時間帯やおすすめメニュー",
-      "作業スペース": "例）\n・使いたい時間：平日の3〜5限\n・条件：コンセントあり／静かな場所\n・知りたいこと：図書館以外で空いている場所",
-      "暮らし・家探し": "例）\n・今の状況：来年度から一人暮らし予定\n・条件：家賃5万円以内・自転車で通いたい\n・知りたいこと：住んでよかったエリアと注意点",
-      "体調・健康": "例）\n・今の状況：数日前から体調がすぐれない\n・知りたいこと：学内で相談できる窓口や受診先\n※ つらいときは、無理せず医療機関や保健センターへ",
-      "新歓・サークル": "例）\n・今の状況：1年。運動系と文化系で迷っている\n・気にしていること：活動頻度・年間の費用・兼部できるか\n・知りたいこと：入る前に確認しておくべきこと",
-      "バイト・研究室": "例）\n・今の状況：2年。来年のゼミ選びを考え始めた\n・気にしていること：指導スタイル・活動量\n・知りたいこと：選ぶときに見ておくといいところ",
-      "その他": "例）\n・今の状況：\n・困っていること：\n・知りたいこと："
+      "体調・健康": "今の状況・知りたいことを書くと答えてもらいやすくなります\n※ つらいときは、無理せず医療機関や保健センターへ",
+      "その他": "今の状況・困っていること・知りたいことを書くと答えてもらいやすくなります"
     };
 
     // サンプル投稿のタグ
@@ -1665,7 +1672,7 @@
                 <span className="text-[11px] text-sub truncate">{post.commentsCount}人が回答</span>
               </span>
             ) : (
-              <span className="text-[11px] text-sub">{post.ai ? "AIが返信済み・回答募集中" : "まだ回答なし"}</span>
+              <span></span>
             )}
             {mine
               ? <span className="flex-shrink-0 border border-brand text-brand-deep text-[12px] font-black px-3 py-1.5 rounded-full">{post.commentsCount ? "BAを選ぶ" : "確認する"}</span>
@@ -1693,7 +1700,6 @@
               <button onClick={onBack} aria-label="戻る" className="w-11 h-11 rounded-full flex items-center justify-center text-ink press"><Icon n="arrow_back_ios_new" size={22} /></button>
               <div className="min-w-0">
                 <h2 className="font-head font-black text-[17px] leading-tight">回答を待っている質問</h2>
-                <p className="text-[11.5px] text-mute">回答0件が先・新しい順／解決済みは除く</p>
               </div>
             </header>
             <div className="px-4 pt-3 pb-2 space-y-2">
@@ -1744,7 +1750,7 @@
       ] },
       faq: { title: "よくある質問", body: [
         ["ポイントはどうやって貯まる？", "記事の投稿で+10pt、質問への回答で+3pt、「助かった！」を押すと+1ptです。"],
-        ["チケットはどう使う？", `お店のレジで「お店で使う」を押し、レジのQRを読み取ってスライドします。完了画面を店員さんに見せてください（表示できるのは使用から${PRESENT_LIMIT_MIN}分間だけです）。`],
+        ["ポイントは何に使える？", "楽天ポイントに交換できます（仮）。「交換」タブから選んでください。"],
         ["名前は表示される？", "表示されるのは学部・学年だけです。投稿や回答は匿名にもできます。"],
         ["ベストアンサーとは？", "質問した人が、いちばん納得できた回答を1つ選ぶしくみです。選ぶと質問は解決済みになります。"],
         ["ほかの大学の人は見られる？", "見られません。大学のメールアドレスで確認した学生だけが使えます。"]
@@ -1825,8 +1831,8 @@
                 </div>
 
                 <MenuGroup title="設定">
-                  <MenuRow icon="notifications" label="通知設定" sub={`${NOTIF_PREF_ITEMS.filter(i => notifPrefs[i.key] !== false).length}/${NOTIF_PREF_ITEMS.length} 項目がオン`} onClick={() => setSub("notif")} />
-                  <MenuRow icon="workspace_premium" label="プレミアム（準備中）" sub="ほしい機能を教えてください" onClick={onPremium} />
+                  <MenuRow icon="notifications" label="通知設定" onClick={() => setSub("notif")} />
+                  <MenuRow icon="workspace_premium" label="プレミアム（準備中）" onClick={onPremium} />
                 </MenuGroup>
 
                 <MenuGroup title={`${me.univ}の公式情報`}>
@@ -1881,7 +1887,7 @@
                   <div>
                     <label className={LABEL} htmlFor="contact-kind">お問い合わせの種類</label>
                     <select id="contact-kind" value={contactKind} onChange={(e) => setContactKind(e.target.value)} className={cx(INPUT, "font-bold")}>
-                      {["サービスについて", "不具合の報告", "ポイント・チケット", "協力店について", "その他"].map(k => <option key={k}>{k}</option>)}
+                      {["サービスについて", "不具合の報告", "ポイント・交換", "その他"].map(k => <option key={k}>{k}</option>)}
                     </select>
                   </div>
                   <div>
@@ -1919,7 +1925,7 @@
       help:    [{ icon: "forum", title: "回答0件の質問をのぞく", desc: "最初のひとことが、いちばん喜ばれます。", action: "waiting" }, { icon: "edit_note", title: "経験を記事にまとめる", desc: "同じ悩みの後輩が見つけてくれます。", action: "post" }],
       curious: [{ icon: "help", title: "気になることを質問する", desc: "状況を書くと、答えてもらいやすくなります。", action: "ask" }, { icon: "menu_book", title: "学んだことを記録する", desc: "1年後の自分への贈りものに。", action: "log" }],
       plan:    [{ icon: "menu_book", title: "今週の予定を記録する", desc: "振り返りがラクになります。", action: "log" }, { icon: "edit_note", title: "テスト対策をシェアする", desc: "あなたの段取りは、誰かの近道です。", action: "post" }],
-      explore: [{ icon: "confirmation_number", title: "札幌駅周辺のお店に行く", desc: "ポイントで使えるチケットがあります。", action: "ticket" }, { icon: "photo_camera", title: "見つけた場所を記事にする", desc: "写真つきだと、ぐっと読まれます。", action: "post" }]
+      explore: [{ icon: "redeem", title: "ポイントを交換する", desc: "楽天ポイントに交換できます（仮）。", action: "ticket" }, { icon: "photo_camera", title: "見つけた場所を記事にする", desc: "写真つきだと、ぐっと読まれます。", action: "post" }]
     };
     function buildAnalysis(posts, logs) {
       const mine = (n) => typeof n === "string" && n.includes("あなた");
@@ -2105,7 +2111,7 @@
         { id: "shimei", icon: "person_search", title: "学部・学年を指定して質問", desc: "聞きたい人にピンポイントで質問できる" }
       ] },
       { group: "おトク", items: [
-        { id: "ticket_plus", icon: "confirmation_number", title: "限定チケット・割引アップ", desc: "協力店のプレミアム限定チケットが使える" },
+        // WS版では非表示：{ id: "ticket_plus", icon: "confirmation_number", title: "限定チケット・割引アップ", desc: "協力店のプレミアム限定チケットが使える" },
         { id: "bonus_pt", icon: "redeem", title: "毎月ボーナスポイント", desc: "毎月ポイントをプレゼント" },
         { id: "pt_double", icon: "stars", title: "ポイント2倍", desc: "記事・回答でもらえるポイントが2倍" }
       ] },
@@ -2126,7 +2132,7 @@
       return (
         <p className="text-[11.5px] text-mute leading-relaxed flex gap-1.5 px-1">
           <Icon n="lock" size={15} className="flex-shrink-0 mt-px" />
-          <span>送るのは大学・学部・学年と回答内容だけ（名前・メールは送りません）。サービス検討のためだけに使います。削除の希望は回答ID「{String(clientId || "").slice(-6)}」を添えて{VOTE_CONTACT}まで。</span>
+          <span>回答内容だけが送信され、サービス検討のためだけに使用されます。削除の希望は回答ID「{String(clientId || "").slice(-6)}」を添えて{VOTE_CONTACT}まで。</span>
         </p>
       );
     }
@@ -2352,7 +2358,7 @@
                 ))}
               </ul>
               {ai.outro && <p className="text-[13px] leading-relaxed text-ink">{ai.outro}</p>}
-              <p className="text-[12px] text-mute">※ AIの回答です。学生の回答が届いたらそちらを優先してね</p>
+              <p className="text-[12px] text-mute">※ AIの回答です</p>
             </div>
           )}
         </div>
@@ -2528,7 +2534,19 @@
       const [myCoupons, setMyCoupons] = usePersistentState("myCoupons2", () => makeInitialCoupons(U));
       const [activeTabPointModal, setActiveTabPointModal] = useState("exchange");
       const [activeCouponForUse, setActiveCouponForUse] = useState(null);
-      const [selectedStore, setSelectedStore] = useState(null);   // 協力店の詳細シート
+      const [selectedStore, setSelectedStore] = useState(null);   // 協力店の詳細シート（WS版では未使用）
+      const [selectedPlan, setSelectedPlan] = useState(null);     // 交換の確認シート
+      const [exchangeHistory, setExchangeHistory] = usePersistentState("exchangeHistory", () => []);
+      // 楽天ポイントへの交換（デモ：実際の付与は行わない）
+      const handleExchangePlan = (pl) => {
+        if (userThanks < pl.cost) { showToast(`⚠️ ポイントが足りません（必要: ${pl.cost}pt）`); return; }
+        const at = Date.now();
+        setUserThanks(prev => prev - pl.cost);
+        setExchangeHistory(prev => [{ id: at, amount: pl.amount, cost: pl.cost, at, receipt: `X-${String(at).slice(-6)}` }, ...prev]);
+        setSelectedPlan(null);
+        showToast(`${EXCHANGE_NAME} ${pl.amount}ポイントに交換しました`);
+        setActiveTabPointModal("myCoupons");
+      };
 
       // 🔍 改善した検索ステート
       const [searchQuery, setSearchQuery] = useState("");
@@ -3231,7 +3249,7 @@
       const sortedComments = selectedPost
         ? [...selectedPost.comments].sort((a, b) => ((b.id === selectedPost.bestAnswerId) - (a.id === selectedPost.bestAnswerId)) || ((b.thanks || 0) - (a.thanks || 0)))
         : [];
-      const showInstallBanner = !bannerDismissed && !IS_STANDALONE;
+      const showInstallBanner = false;   // WS版：テキストを減らすため非表示
       const hasStudentAnswers = !!selectedPost && selectedPost.comments.length > 0;
       const visibleComments = showAllAnswers ? sortedComments : sortedComments.slice(0, 10);
 
@@ -3529,19 +3547,14 @@
                         </section>
                         )}
 
-                        {/* 札幌駅周辺のお店のチケット */}
+                        {/* ポイントの交換先（仮：楽天ポイント） */}
                         <section className="space-y-2.5">
-                          <SectionHead title="札幌駅周辺のチケット" action="ポイント交換へ" onAction={() => { setActiveTabPointModal("exchange"); setCurrentTab(4); }} />
+                          <SectionHead title={`${EXCHANGE_NAME}に交換`} action="ポイント交換へ" onAction={() => { setActiveTabPointModal("exchange"); setCurrentTab(4); }} />
                           <ScrollRow className="flex gap-3 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4">
-                            {PARTNER_STORES.map(st => (
-                              <button key={st.id} onClick={() => setSelectedStore(st)} className="w-[148px] flex-shrink-0 text-left press">
-                                <StoreThumb store={st} className="w-full aspect-[4/3] rounded-2xl" iconSize={32} />
-                                <span className="block text-[11px] text-mute mt-1.5 truncate">{st.name}</span>
-                                <span className="block font-bold text-[13.5px] leading-snug">{st.ticket.title}</span>
-                                <span className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[11px] font-black text-brand-deep">{st.ticket.cost}pt</span>
-                                  <span className="text-[11px] text-mute">{st.access}</span>
-                                </span>
+                            {EXCHANGE_PLANS.map(pl => (
+                              <button key={pl.id} onClick={() => setSelectedPlan(pl)} className="w-[132px] flex-shrink-0 text-left press">
+                                <PlanThumb plan={pl} className="w-full aspect-[4/3] rounded-2xl" />
+                                <span className="block text-[12px] font-black text-brand-deep mt-1.5">{pl.cost}ptで交換</span>
                               </button>
                             ))}
                           </ScrollRow>
@@ -3935,15 +3948,14 @@
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-black leading-snug">{noticeLabel(n)}</span>
                       {n.title && <span className="block text-[12px] text-sub mt-0.5 truncate">「{n.title}」</span>}
-                      {n.preview && <span className={cx("block text-[12px] text-ink mt-1 leading-relaxed", n.kind === "digest" ? "whitespace-pre-line" : "line-clamp-2")}>{n.preview}</span>}
+                      {n.preview && <span className="text-[12px] text-ink mt-1 leading-relaxed line-clamp-2">{n.preview}</span>}
                       <span className="block text-[12px] text-mute mt-1">{agoLabel(n.at)}</span>
                     </span>
                     {!n.read && <span className="w-2.5 h-2.5 rounded-full bg-brand flex-shrink-0 mt-1.5" aria-label="未読"></span>}
                   </button>
                 ))}
-                <p className="text-[12px] text-mute pt-1">※ デモ：投稿・回答・「気になる」の数秒後に、ほかの学生の反応が届いたことにしています</p>
                 <button onClick={demoFacultyDigest} className="w-full text-[12px] font-bold text-brand-deep border border-dashed border-brand/50 rounded-2xl py-2.5 press">
-                  デモ：{U.faculty}の新着を追加して、まとめを今すぐ届ける
+                  デモ：新着まとめを今すぐ届ける
                 </button>
               </div>
             </div>
@@ -3952,7 +3964,7 @@
             {/* TAB 4: チケット・ポイント交換（全画面） */}
             {currentTab === 4 && (
             <div className="space-y-3 w-full animate-fade-up">
-              <h2 className="font-head font-black text-[20px] px-1 pt-1 flex items-center gap-1.5"><Icon n="confirmation_number" fill size={22} className="text-brand-deep" />チケット</h2>
+              <h2 className="font-head font-black text-[20px] px-1 pt-1 flex items-center gap-1.5"><Icon n="redeem" fill size={22} className="text-brand-deep" />ポイント交換</h2>
 
               <div className="bg-ask-tint rounded-3xl p-3.5 flex justify-between items-center">
                 <span className="text-sub font-bold text-[13px]">保有ポイント</span>
@@ -3973,8 +3985,8 @@
                   value={activeTabPointModal}
                   onChange={setActiveTabPointModal}
                   options={[
-                    { value: "exchange", label: "ポイントを使う", icon: "storefront" },
-                    { value: "myCoupons", label: `MYチケット (${myCoupons.filter(c => !c.isUsed).length})`, icon: "confirmation_number" }
+                    { value: "exchange", label: "交換する", icon: "redeem" },
+                    { value: "myCoupons", label: `交換履歴 (${exchangeHistory.length})`, icon: "history" }
                   ]}
                 />
               </div>
@@ -3982,85 +3994,38 @@
               <div ref={pointScrollRef} className="space-y-3 pb-4">
                 {activeTabPointModal === "exchange" && (
                   <div className="space-y-2.5">
-                    <p className="text-[13px] text-sub flex items-center gap-1"><Icon n="train" size={16} className="text-brand-deep" />札幌駅周辺のお店で使えます</p>
-                    {PARTNER_STORES.map(store => {
-                      const enough = userThanks >= store.ticket.cost;
+                    {EXCHANGE_PLANS.map(pl => {
+                      const enough = userThanks >= pl.cost;
                       return (
-                        <button
-                          key={store.id}
-                          onClick={() => setSelectedStore(store)}
-                          className="w-full text-left bg-surface p-3 rounded-3xl shadow-soft border border-line/70 flex gap-3 items-center press"
-                        >
-                          <StoreThumb store={store} className="w-[72px] h-[72px] rounded-2xl" />
-                          <span className="min-w-0 flex-1 space-y-0.5">
-                            <span className="block text-[12px] text-mute truncate">{store.name}</span>
-                            <span className="block font-head font-black text-[16px] leading-snug">{store.ticket.title}</span>
-                            <span className="flex items-center gap-2 text-[11px] text-sub">
-                              <span className="flex items-center gap-0.5"><Icon n="directions_walk" size={14} />{store.access}</span>
-                              <OpenBadge store={store} />
-                            </span>
+                        <button key={pl.id} onClick={() => setSelectedPlan(pl)}
+                          className="w-full text-left bg-surface p-3 rounded-3xl shadow-soft border border-line/70 flex gap-3 items-center press">
+                          <PlanThumb plan={pl} className="w-[72px] h-[72px] rounded-2xl" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-head font-black text-[16px] leading-snug">{pl.amount}ポイント</span>
+                            {pl.badge && <span className="inline-block mt-1 text-[11px] font-black text-love bg-love-tint px-2 py-0.5 rounded-full">{pl.badge}</span>}
                           </span>
-                          <span className={cx("font-head font-black text-[13px] px-2.5 py-1 rounded-full flex-shrink-0", enough ? "bg-brand-tint text-brand-deep" : "bg-sunk text-mute")}>{store.ticket.cost}pt</span>
+                          <span className={cx("font-head font-black text-[13px] px-2.5 py-1 rounded-full flex-shrink-0", enough ? "bg-brand-tint text-brand-deep" : "bg-sunk text-mute")}>{pl.cost}pt</span>
                         </button>
                       );
                     })}
-                    <p className="text-[11px] text-mute text-center pt-1">※ 掲載店はサンプルです</p>
+                    <p className="text-[11px] text-mute text-center pt-1">※ 交換先・レートは仮です（デモ）</p>
                   </div>
                 )}
 
                 {activeTabPointModal === "myCoupons" && (
-                  <div className="space-y-3">
-                    <p className="text-[13px] text-sub">お店のレジで「お店で使う」→ QRを読み取り</p>
-
-                    {myCoupons.length === 0 ? (
-                      <div className="py-8 text-center text-mute text-[13px]">
-                        チケットはまだありません
+                  <div className="space-y-2.5">
+                    {exchangeHistory.length === 0 ? (
+                      <div className="py-8 text-center text-mute text-[13px]">まだ交換していません</div>
+                    ) : exchangeHistory.map(h => (
+                      <div key={h.id} className="bg-surface rounded-3xl p-4 border border-line/70 flex gap-3 items-center">
+                        <span className="w-11 h-11 rounded-2xl bg-brand-tint text-brand-deep flex items-center justify-center flex-shrink-0"><Icon n="redeem" fill size={22} /></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-bold text-[15px]">{EXCHANGE_NAME} {h.amount}</span>
+                          <span className="block text-[11px] text-mute tabular-nums">{fmtDateTime(h.at)}・{h.cost}pt・{h.receipt}</span>
+                        </span>
+                        <span className="text-[11px] font-black text-brand-deep bg-brand-tint px-2 py-1 rounded-full flex-shrink-0">付与手続き中</span>
                       </div>
-                    ) : (
-                      myCoupons.map(coupon => (
-                        <div
-                          key={coupon.id}
-                          className={cx(
-                            "p-4 rounded-3xl",
-                            coupon.isUsed ? "bg-sunk" : "bg-surface border-2 border-dashed border-brand/50"
-                          )}
-                        >
-                          {(() => {
-                            const st = storeById(coupon.storeId);
-                            return (
-                              <div className="flex gap-3 items-center mb-3">
-                                {st && <StoreThumb store={st} className="w-14 h-14 rounded-2xl" iconSize={24} />}
-                                <div className="min-w-0 flex-1">
-                                  <h4 className="font-bold text-[15px] leading-snug">{st ? st.ticket.title : coupon.title}</h4>
-                                  {st && <p className="text-[12px] text-sub truncate">{st.name}</p>}
-                                  <p className="text-[11px] text-mute">{coupon.isUsed ? coupon.code : `期限 ${coupon.expires || "—"}`}</p>
-                                </div>
-                                {st && !coupon.isUsed && (
-                                  <button onClick={() => setSelectedStore(st)} aria-label={`${st.name}のお店情報`} className="w-9 h-9 rounded-full bg-sunk text-sub flex items-center justify-center flex-shrink-0 press">
-                                    <Icon n="info" size={20} />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })()}
-
-                          {coupon.isUsed ? (
-                            <button onClick={() => setActiveCouponForUse(coupon)} className="w-full text-left bg-surface rounded-2xl px-3.5 py-2.5 text-[12px] text-sub space-y-0.5 press">
-                              <span className="flex items-center gap-1 font-black text-ink text-[13px]"><Icon n="check_circle" fill size={16} className="text-brand" />使用済み</span>
-                              {coupon.usedAt && <span className="block tabular-nums">{fmtDateTime(coupon.usedAt)}・{coupon.store}・{coupon.receipt}</span>}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setActiveCouponForUse(coupon)}
-                              className={cx(BTN_PRIMARY, "w-full flex items-center justify-center gap-1.5")}
-                            >
-                              <Icon n="qr_code_scanner" size={20} />
-                              <span>お店で使う</span>
-                            </button>
-                          )}
-                        </div>
-                      ))
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
@@ -4076,7 +4041,7 @@
           >
             {[
               { tab: 0, icon: "home", label: "フィード" },
-              { tab: 4, icon: "confirmation_number", label: "チケット" },
+              { tab: 4, icon: "redeem", label: "交換" },
               { center: true },
               { tab: 5, icon: "notifications", label: "お知らせ" },
               { tab: 2, icon: "person", label: "マイページ" }
@@ -4457,13 +4422,12 @@
                   </div>
                   <textarea
                     id="post-body"
-                    rows={newType === "question" ? 5 : 4}
-                    placeholder={newType === "question" ? (DETAIL_PLACEHOLDER[newCategory] || DETAIL_PLACEHOLDER["その他"]) : "例）いつ・どこで・何があったか、役に立つポイントを書こう"}
+                    rows={4}
+                    placeholder={newType === "question" ? (DETAIL_PLACEHOLDER[newCategory] || DETAIL_PLACEHOLDER["その他"]) : "いつ・どこで・何があったか"}
                     value={newContent}
                     onChange={(e) => setNewContent(e.target.value)}
                     className={cx(INPUT, "leading-relaxed")}
                   />
-                  {newType === "question" && <p className="text-[11.5px] text-mute mt-1">「状況・困っていること・知りたいこと」があると、答えてもらいやすくなります</p>}
                 </div>
 
                 <TagInput tags={newTags} setTags={setNewTags} suggestions={Array.from(new Set([...(CATEGORY_TAG_HINTS[newCategory] || []), ...popularTags]))} bodyTags={hashtagsInText(`${newTitle} ${newContent}`)} />
@@ -4512,11 +4476,11 @@
                   />
                   <span className="leading-relaxed">
                     <span className="font-bold text-[14px] block">匿名で投稿する</span>
-                    <span className="text-[12px] text-sub">オフ：「{myLabel.replace("（あなた）", "")}」と表示</span>
+
                   </span>
                 </label>
 
-                <p className="text-[12px] text-mute">※ 個人が特定できる内容・悪口はNG</p>
+                <p className="text-[12px] text-mute">※ 個人の特定・悪口はNG</p>
               </div>
 
               <div className="px-4 pt-3 pb-4 border-t border-line">
@@ -4763,14 +4727,14 @@
                   <span className="w-12 h-12 rounded-2xl bg-brand text-on-brand flex items-center justify-center flex-shrink-0"><Icon n="edit_note" fill size={28} /></span>
                   <span>
                     <span className="block font-head font-black text-[17px] text-brand-deep leading-tight">記事を投稿する</span>
-                    <span className="block text-[12px] text-brand-deep leading-snug mt-0.5">知っていることを共有 +{POINT_RULES.share}pt</span>
+                    <span className="block text-[12px] text-brand-deep leading-snug mt-0.5">+{POINT_RULES.share}pt</span>
                   </span>
                 </button>
                 <label htmlFor="scan-post-input" className="w-full text-left bg-sunk rounded-3xl p-4 flex items-center gap-3.5 cursor-pointer press">
                   <span className="w-12 h-12 rounded-2xl bg-surface text-brand-deep flex items-center justify-center flex-shrink-0"><Icon n="document_scanner" fill size={28} /></span>
                   <span>
                     <span className="block font-head font-black text-[17px] text-ink leading-tight">撮って投稿する</span>
-                    <span className="block text-[12px] text-sub leading-snug mt-0.5">掲示板やノートの文字を読み取って記事に +{POINT_RULES.share}pt</span>
+                    <span className="block text-[12px] text-sub leading-snug mt-0.5">文字を読み取って記事に +{POINT_RULES.share}pt</span>
                   </span>
                 </label>
               </div>
@@ -4900,6 +4864,30 @@
                     <div className="w-full py-3.5 rounded-2xl bg-sunk text-mute font-bold text-[14px] text-center">あと{selectedStore.ticket.cost - userThanks}pt で交換できます</div>
                   )}
                 </div>
+              </div>
+            </Sheet>
+          )}
+
+          {/* 🎁 交換の確認（仮：楽天ポイント） */}
+          {selectedPlan && (
+            <Sheet onClose={() => setSelectedPlan(null)} z={60}>
+              <SheetHeader title="ポイント交換" icon="redeem" onClose={() => setSelectedPlan(null)} />
+              <div className="px-5 pb-6 pt-1 space-y-4">
+                <div className="bg-brand-tint rounded-3xl p-5 text-center space-y-1">
+                  <p className="text-[12px] font-bold text-brand-deep">{EXCHANGE_NAME}</p>
+                  <p className="font-head font-black text-[34px] leading-none text-brand-deep tabular-nums">{selectedPlan.amount}<span className="text-[15px] ml-1">ポイント</span></p>
+                </div>
+                <div className="space-y-2 text-[13px]">
+                  <div className="flex justify-between"><span className="text-sub">使うポイント</span><b className="tabular-nums">{selectedPlan.cost}pt</b></div>
+                  <div className="flex justify-between"><span className="text-sub">交換後の残り</span><b className="tabular-nums">{Math.max(0, userThanks - selectedPlan.cost)}pt</b></div>
+                  <div className="flex justify-between"><span className="text-sub">受け取り先</span><b>楽天会員（デモ：連携済み）</b></div>
+                </div>
+                <p className="text-[11px] text-mute">※ デモのため、実際には付与されません</p>
+                {userThanks >= selectedPlan.cost ? (
+                  <button onClick={() => handleExchangePlan(selectedPlan)} className={cx(BTN_PRIMARY, "w-full")}>{selectedPlan.cost}ptで交換する</button>
+                ) : (
+                  <div className="w-full py-3.5 rounded-2xl bg-sunk text-mute font-bold text-[14px] text-center">あと{selectedPlan.cost - userThanks}pt で交換できます</div>
+                )}
               </div>
             </Sheet>
           )}
