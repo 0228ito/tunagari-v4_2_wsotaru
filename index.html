@@ -707,7 +707,7 @@
           title: `${U.facultyBuilding}の空き教室メモ`,
           category: "キャンパスライフ",
           date: "2025-08-15",
-          privacy: "FOLLOWERS",
+          privacy: "PUBLIC",
           note: "3階の302教室は3限〜4限の間コンセント使えて静か。",
           image: null
         },
@@ -1186,6 +1186,43 @@
       if (n.kind === "digest") return `${n.faculty}の新着まとめ（${n.count}件）`;
       const k = NOTICE_KINDS[n.kind] || NOTICE_KINDS.answer; return n.mine ? k.mineLabel : k.otherLabel;
     };
+
+    // 📊 情報の頼りになり度（フォロー／フォロワーの代わりに表示）
+    //   articles＝記事の数（情報をたくさん持っている）／shares＝記事＋回答の数（共有回数）／thanks＝もらった「助かった！」（信頼）
+    const TRUST_BADGES = [
+      { key: "rich",    icon: "menu_book", label: "情報通",     goal: 10,  unit: "件", value: s => s.articles },
+      { key: "sharer",  icon: "campaign",  label: "シェア常連", goal: 30,  unit: "回", value: s => s.shares },
+      { key: "trusted", icon: "favorite",  label: "頼れる人",   goal: 300, unit: "",   value: s => s.thanks }
+    ];
+    // デモ：これまでの活動（サンプル）。この上に、画面で投稿・回答した分が加算されます
+    const MY_PAST_STATS = { articles: 8, answers: 17, thanks: 214 };
+    function calcMyStats(posts) {
+      const mine = (n) => typeof n === "string" && n.includes("あなた");
+      const infos = posts.filter(p => mine(p.author) && p.type !== "question");
+      const myComments = posts.flatMap(p => p.comments.filter(c => mine(c.user)).map(c => ({ ...c, isAnswer: p.type === "question" })));
+      const articles = MY_PAST_STATS.articles + infos.length;
+      const answers = MY_PAST_STATS.answers + myComments.filter(c => c.isAnswer).length;
+      const thanks = MY_PAST_STATS.thanks + infos.reduce((a, p) => a + (p.thanks || 0), 0) + myComments.reduce((a, c) => a + (c.thanks || 0), 0);
+      return { articles, answers, shares: articles + answers, thanks };
+    }
+    // デモ：ほかの学生の数字は、表示名から決めたサンプル（本番はサーバーで集計）
+    function sampleAuthorStats(name) {
+      let h = 7; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      const articles = 2 + (h % 18), answers = 3 + ((h >> 5) % 40), thanks = 30 + ((h >> 10) % 520);
+      return { articles, answers, shares: articles + answers, thanks };
+    }
+    // 投稿者の横に出す小さな目安（達成バッジ＋助かった！の数）
+    function AuthorTrust({ stats }) {
+      const got = TRUST_BADGES.filter(b => b.value(stats) >= b.goal);
+      return (
+        <span className="flex items-center gap-2 text-[11px] text-sub whitespace-nowrap">
+          {got.map(b => (
+            <span key={b.key} className="inline-flex items-center gap-0.5 font-bold text-brand-deep"><Icon n={b.icon} fill size={13} />{b.label}</span>
+          ))}
+          <span className="inline-flex items-center gap-0.5"><Icon n="favorite" fill size={12} className="text-love" />{stats.thanks}</span>
+        </span>
+      );
+    }
 
     // 「あなたの〜」の目印
     function MineBadge({ type, className }) {
@@ -2916,8 +2953,8 @@
       const toggleLogPrivacy = (logId) => {
         setMyLogs(prev => prev.map(log => {
           if (log.id === logId) {
-            const nextPrivacy = log.privacy === "PUBLIC" ? "FOLLOWERS" : log.privacy === "FOLLOWERS" ? "PRIVATE" : "PUBLIC";
-            const label = nextPrivacy === "PUBLIC" ? "🌐 全員に公開" : nextPrivacy === "FOLLOWERS" ? "🔒 フォロワー限定" : "👁️ 自分のみ(非公開)";
+            const nextPrivacy = log.privacy === "PUBLIC" ? "PRIVATE" : "PUBLIC";
+            const label = nextPrivacy === "PUBLIC" ? "🌐 全員に公開" : "👁️ 自分のみ(非公開)";
             showToast(`公開範囲を変更しました：${label}`);
             return { ...log, privacy: nextPrivacy };
           }
@@ -2926,6 +2963,8 @@
       };
 
       const isMine = (name) => typeof name === "string" && name.includes("あなた");
+      const myStats = useMemo(() => calcMyStats(posts), [posts]);
+      const authorStats = (name) => isMine(name) ? myStats : sampleAuthorStats(name);
 
       const openPost = () => {
         setNewType("info");
@@ -3706,17 +3745,31 @@
 
                   <div className="grid grid-cols-3 bg-surface text-ink rounded-3xl p-3 text-center gap-1 mb-3 relative">
                     <div>
-                      <span className="text-mute text-[12px] block font-medium">フォロー</span>
-                      <span className="font-head font-black text-[16px]">48 <span className="text-[12px] font-bold text-mute">人</span></span>
+                      <span className="text-mute text-[12px] block font-medium">記事</span>
+                      <span className="font-head font-black text-[16px]">{myStats.articles} <span className="text-[12px] font-bold text-mute">件</span></span>
                     </div>
                     <div className="border-x border-line">
-                      <span className="text-mute text-[12px] block font-medium">フォロワー</span>
-                      <span className="font-head font-black text-[16px] text-brand-deep">124 <span className="text-[12px] font-bold text-mute">人</span></span>
+                      <span className="text-mute text-[12px] block font-medium">共有</span>
+                      <span className="font-head font-black text-[16px]">{myStats.shares} <span className="text-[12px] font-bold text-mute">回</span></span>
                     </div>
-                    <button onClick={() => setCurrentTab(4)} className="press">
-                      <span className="text-mute text-[12px] block font-medium">ポイント</span>
-                      <span className="font-head font-black text-[16px] text-brand-deep">{userThanks} <span className="text-[12px] font-bold text-mute">pt</span></span>
-                    </button>
+                    <div>
+                      <span className="text-mute text-[12px] block font-medium">助かった！</span>
+                      <span className="font-head font-black text-[16px] text-love">{myStats.thanks}</span>
+                    </div>
+                  </div>
+
+                  {/* バッジ：情報通（記事の数）／シェア常連（共有回数）／頼れる人（助かった！の数） */}
+                  <div className="grid grid-cols-3 gap-2 mb-3 relative">
+                    {TRUST_BADGES.map(b => {
+                      const v = b.value(myStats), ok = v >= b.goal;
+                      return (
+                        <div key={b.key} className={cx("rounded-2xl px-2 py-2 text-center", ok ? "bg-surface text-brand-deep" : "bg-white/15 text-white")}>
+                          <Icon n={b.icon} fill={ok} size={20} />
+                          <span className="block text-[12px] font-black leading-tight">{b.label}</span>
+                          <span className={cx("block text-[11px] font-bold", ok ? "text-brand-deep/70" : "text-white/80")}>{ok ? "達成" : `あと${b.goal - v}${b.unit}`}</span>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <button
@@ -3882,8 +3935,8 @@
                               log.privacy === "PUBLIC" ? "bg-brand-tint text-brand-deep" : "bg-sunk text-sub"
                             )}
                           >
-                            <Icon n={log.privacy === "PUBLIC" ? "public" : log.privacy === "FOLLOWERS" ? "lock" : "visibility_off"} size={14} />
-                            <span>{log.privacy === "PUBLIC" ? "公開" : log.privacy === "FOLLOWERS" ? "フォロワー" : "自分のみ"}</span>
+                            <Icon n={log.privacy === "PUBLIC" ? "public" : "visibility_off"} size={14} />
+                            <span>{log.privacy === "PUBLIC" ? "公開" : "自分のみ"}</span>
                           </button>
                         </div>
 
@@ -4111,6 +4164,7 @@
                   <Avatar name={selectedPost.author} size={36} />
                   <div className="min-w-0">
                     <div className="text-[13px] font-bold truncate">{selectedPost.author}</div>
+                    {!String(selectedPost.author).includes("匿名") && <AuthorTrust stats={authorStats(selectedPost.author)} />}
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {isMine(selectedPost.author) && <MineBadge type={selectedPost.type} />}
                       {isQuestion && (selectedPost.bestAnswerId ? <SolvedBadge /> : <QuestionBadge />)}
@@ -4328,8 +4382,8 @@
                     "text-[12px] font-bold px-3 py-1 rounded-full flex items-center gap-1",
                     selectedLog.privacy === "PUBLIC" ? "bg-brand-tint text-brand-deep" : "bg-sunk text-sub"
                   )}>
-                    <Icon n={selectedLog.privacy === "PUBLIC" ? "public" : selectedLog.privacy === "FOLLOWERS" ? "lock" : "visibility_off"} size={14} />
-                    <span>{selectedLog.privacy === "PUBLIC" ? "全員に公開中" : selectedLog.privacy === "FOLLOWERS" ? "フォロワー限定" : "自分のみ(非公開)"}</span>
+                    <Icon n={selectedLog.privacy === "PUBLIC" ? "public" : "visibility_off"} size={14} />
+                    <span>{selectedLog.privacy === "PUBLIC" ? "全員に公開中" : "自分のみ(非公開)"}</span>
                   </span>
                 </div>
                 <button onClick={() => setSelectedLog(null)} aria-label="閉じる" className="w-9 h-9 rounded-full bg-sunk text-sub flex items-center justify-center press flex-shrink-0">
@@ -4550,10 +4604,9 @@
 
                 <div>
                   <label className={LABEL}>🌐 公開範囲設定</label>
-                  <div className="grid grid-cols-3 gap-2 text-[12px] font-bold">
+                  <div className="grid grid-cols-2 gap-2 text-[12px] font-bold">
                     {[
                       { v: "PUBLIC", icon: "public", label: "全員に公開", on: "bg-brand-tint text-brand-deep border-brand" },
-                      { v: "FOLLOWERS", icon: "lock", label: "フォロワーのみ", on: "bg-brand-tint text-brand-deep border-brand" },
                       { v: "PRIVATE", icon: "visibility_off", label: "自分のみ", on: "bg-sunk text-ink border-sub" }
                     ].map(o => (
                       <button
