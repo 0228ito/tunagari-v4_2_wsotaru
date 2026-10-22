@@ -567,6 +567,11 @@
           category: "暮らし・家探し",
           title: "【質問】大学に通いやすくて、静かで住みやすいエリアはどこですか？",
           content: "来年度から一人暮らしを考えています。通学しやすさと静かさを両方満たせるエリアがあれば教えてください。",
+          // 🔗 「一緒に回答を待つ」で合流した人（条件はひとこと任意）
+          joiners: [
+            { id: "j-5-1", who: `${U.facultyShort}1年`, note: "家賃は4万円台までで探しています", at: 0 },
+            { id: "j-5-2", who: "匿名の学生", note: "冬も自転車かバスで通える範囲だとうれしいです", at: 0 }
+          ],
           thanks: 7,
           views: 54,
           commentsCount: 0,
@@ -1619,6 +1624,28 @@
     const catMeta = (c) => CATEGORY_META[c] || { icon: "article", short: c };
     const plainTitle = (t) => String(t || "").replace(/^【質問】\s*/, "");
 
+    // 🔗 似ている質問を探す（投稿前に「一緒に回答を待つ」を選べるようにする）
+    //   ・プロトタイプ：文字の重なり（2文字ずつ）＋カテゴリの一致で判定
+    //   ・本番：AIで文章の意味の近さを判定する想定（言い回しがちがっても見つけられる）
+    const SIM_STOP = /^【質問】|[【】「」『』（）()、。，．・？?！!～〜\s\u3000]|ですか|ますか|ました|ません|ください|ありますか|みんな|教えて|について|知りたい|どこ|どう|何を|なに/g;
+    const simGrams = (t) => { const s = String(t || "").replace(SIM_STOP, ""); const g = new Set(); for (let i = 0; i < s.length - 1; i++) g.add(s.slice(i, i + 2)); return g; };
+    function findSimilarQuestions(posts, title, category, isHidden) {
+      const q = simGrams(title);
+      if (q.size < 3) return [];
+      return posts
+        .filter(p => p.type === "question" && !isMineName(p.author) && !(isHidden && isHidden(p)))
+        .map(p => {
+          const tg = simGrams(p.title), cg = simGrams(p.content);
+          let hit = 0, hitT = 0;
+          q.forEach(g => { if (tg.has(g)) { hit++; hitT++; } else if (cg.has(g)) hit += 0.5; });
+          return { p, hitT, score: hit / q.size + (p.category === category ? 0.1 : 0) };
+        })
+        .filter(x => x.hitT >= 2 && x.score >= 0.3)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+        .map(x => x.p);
+    }
+
     // 文字だけの投稿の表紙（タイトルを主役に。色は3トーンを順番に）
     const COVER_TONES = [
       { box: "bg-brand text-white", chip: "bg-white/20 text-white", q: "text-white/15" },
@@ -1698,6 +1725,9 @@
             {mine ? <MineBadge type="question" /> : <><Icon n={catMeta(post.category).icon} fill size={14} className="text-brand-deep" />{catMeta(post.category).short}・{post.time}</>}
             {unreadLabel && <span className="ml-auto bg-brand text-on-brand text-[11px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5"><Icon n="notifications_active" fill size={12} />{unreadLabel}</span>}
           </span>
+          {(post.joiners || []).length > 0 && (
+            <span className="self-start inline-flex items-center gap-0.5 bg-brand-tint text-brand-deep text-[11px] font-black px-2 py-0.5 rounded-full"><Icon n="group" size={13} />同じ疑問 {post.joiners.length}人</span>
+          )}
           <span className="flex gap-2">
             <span className="font-head font-black text-[22px] leading-none text-brand">Q.</span>
             <span className="font-head font-bold text-[15px] leading-snug line-clamp-3">{plainTitle(post.title)}</span>
@@ -2707,6 +2737,9 @@
       const [isOcrProcessing, setIsOcrProcessing] = useState(false);
       const [ocrTags, setOcrTags] = useState([]);
       const [newTags, setNewTags] = useState([]);
+      // 🔗 似ている質問に合流（「一緒に回答を待つ」）
+      const [joinTarget, setJoinTarget] = useState(null);   // 合流フォームを開いている質問のid
+      const [joinNote, setJoinNote] = useState("");          // 合流するときに書き足す自分の条件（任意）
 
       const [floatingHearts, setFloatingHearts] = useState([]);
       const [toastMessage, setToastMessage] = useState(null);
@@ -3130,6 +3163,8 @@
         setNewImage(null);
         setOcrTags([]);
         setNewTags([]);
+        setJoinTarget(null);
+        setJoinNote("");
         setOpenNewPostModal(false);
         setCurrentTab(0);
         setSearchQuery("");
@@ -3141,6 +3176,30 @@
           setUserThanks(t => t + POINT_RULES.share);
           showToast(`🎉 記事を投稿しました（+${POINT_RULES.share}pt）`);
         }
+      };
+
+      // 🔗 似ている質問と「一緒に回答を待つ」：新しく投稿せず、その質問に合流する（自分の意思で選ぶ）
+      const joinQuestion = (postId) => {
+        const target = postsRef.current.find(p => p.id === postId);
+        if (!target) return;
+        const me = { id: `j-${Date.now()}`, who: newAnonymous ? "匿名の学生（あなた）" : myLabel, note: joinNote.trim(), at: Date.now(), mine: true };
+        setPosts(prev => prev.map(p => p.id === postId
+          ? { ...p, isLiked: true, thanks: p.isLiked ? p.thanks : p.thanks + 1, joiners: [...(p.joiners || []), me] }
+          : p));
+        // 回答が届いたらお知らせ（「気になる」と同じしくみ）。デモでは少し後に回答が届く
+        clearTimeout(watchTimers.current[postId]);
+        if (!target.bestAnswerId && target.commentsCount < SUMMARY_MIN_ANSWERS) {
+          watchTimers.current[postId] = setTimeout(() => deliverWatchedAnswer(postId), WATCH_DEMO_DELAY_MS);
+        }
+        setNewTitle("");
+        setNewContent("");
+        setNewImage(null);
+        setNewTags([]);
+        setJoinTarget(null);
+        setJoinNote("");
+        setOpenNewPostModal(false);
+        setSelectedPostId(postId);
+        showToast("🙌 この質問と一緒に回答を待っています。回答が届いたらお知らせします");
       };
 
       // 🚩 通報
@@ -3281,8 +3340,14 @@
 
       const allWaitingQuestions = posts
         .filter(p => p.type === "question" && !p.bestAnswerId && !reportedIds.includes(`p:${p.id}`))
-        .sort((a, b) => ((a.commentsCount === 0 ? 0 : 1) - (b.commentsCount === 0 ? 0 : 1)) || (ageMinutes(a) - ageMinutes(b)));
+        .sort((a, b) => ((a.commentsCount === 0 ? 0 : 1) - (b.commentsCount === 0 ? 0 : 1))
+          || ((b.joiners || []).length - (a.joiners || []).length)   // 同じ疑問の人が多い質問ほど上に
+          || (ageMinutes(a) - ageMinutes(b)));
       const waitingQuestions = allWaitingQuestions.slice(0, 6);
+      // 🔗 質問を書いている途中に、似ている質問を探す
+      const similarQs = (openNewPostModal && newType === "question")
+        ? findSimilarQuestions(posts, newTitle, newCategory, p => reportedIds.includes(`p:${p.id}`))
+        : [];
 
       const isQuestion = !!selectedPost && selectedPost.type === "question";
       const sortedComments = selectedPost
@@ -4191,6 +4256,21 @@
               <div key={selectedPost.id} className="px-5 pb-4 pt-2 overflow-y-auto space-y-4 flex-1">
                 <h2 className="font-head font-black text-[20px] leading-snug">{selectedPost.title.replace(/^【質問】\s*/, "")}</h2>
                 <p className="text-[14px] text-sub leading-relaxed break-words whitespace-pre-wrap">{selectedPost.content}</p>
+                {/* 🔗 同じ疑問で合流した人（回答者は1回答えれば全員に届く） */}
+                {isQuestion && (selectedPost.joiners || []).length > 0 && (
+                  <div className="bg-sunk rounded-3xl p-3.5 space-y-2">
+                    <p className="text-[13px] font-black flex items-center gap-1"><Icon n="group" size={18} className="text-brand-deep" />同じ疑問の人 {selectedPost.joiners.length}人</p>
+                    <p className="text-[12px] text-sub leading-relaxed">
+                      {selectedPost.bestAnswerId ? "この質問で、ほかの人も一緒に回答を待っていました。" : `回答すると、質問した人とこの${selectedPost.joiners.length}人全員に届きます。`}
+                    </p>
+                    {selectedPost.joiners.filter(j => j.note).map(j => (
+                      <div key={j.id} className="bg-surface rounded-2xl px-3 py-2">
+                        <span className="text-[11.5px] font-bold text-mute">{j.who}の条件</span>
+                        <p className="text-[13px] leading-relaxed break-words whitespace-pre-wrap">{j.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {extractTags(selectedPost).length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {extractTags(selectedPost).map(t => (
@@ -4466,6 +4546,61 @@
                     className={INPUT}
                   />
                 </div>
+
+                {/* 🔗 似ている質問（投稿前に気づけるように。合流するかは自分で決める） */}
+                {similarQs.length > 0 && (
+                  <div className="bg-brand-tint/60 rounded-3xl p-3.5 space-y-2.5 animate-fade-up">
+                    <div>
+                      <p className="text-[13.5px] font-black text-brand-deep flex items-center gap-1"><Icon n="group_add" size={18} />似ている質問があります</p>
+                      <p className="text-[12px] text-sub leading-relaxed mt-0.5">同じ内容なら、一緒に回答を待てます。回答が届くとあなたにもお知らせが届きます。</p>
+                    </div>
+                    {similarQs.map(p => {
+                      const js = p.joiners || [];
+                      const joined = js.some(j => j.mine);
+                      const open = joinTarget === p.id;
+                      const openPost = () => { setOpenNewPostModal(false); setSelectedPostId(p.id); };
+                      return (
+                        <div key={p.id} className="bg-surface rounded-2xl border border-line/70 p-3 space-y-2.5">
+                          <button type="button" onClick={openPost} className="text-left w-full press">
+                            <span className="flex gap-1.5">
+                              <span className="font-head font-black text-[15px] leading-snug text-brand">Q.</span>
+                              <span className="font-bold text-[14px] leading-snug line-clamp-2">{plainTitle(p.title)}</span>
+                            </span>
+                            <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[11.5px] text-mute">
+                              {p.bestAnswerId ? <SolvedBadge /> : <span className={p.commentsCount ? "" : "font-bold text-brand-deep"}>{p.commentsCount ? `回答 ${p.commentsCount}件` : "回答募集中"}</span>}
+                              {js.length > 0 && <span className="font-bold text-brand-deep flex items-center gap-0.5"><Icon n="group" size={14} />同じ疑問 {js.length}人</span>}
+                              <span>{p.time}</span>
+                            </span>
+                          </button>
+                          {p.bestAnswerId ? (
+                            <button type="button" onClick={openPost} className={cx(BTN_SOFT, "w-full text-[13px] py-2.5")}>解決済みの答えを見る</button>
+                          ) : joined ? (
+                            <p className="text-[12.5px] font-bold text-brand-deep flex items-center gap-1"><Icon n="check_circle" fill size={16} />一緒に回答を待っています</p>
+                          ) : open ? (
+                            <div className="space-y-2">
+                              <label className={LABEL}>あなたの条件をひとこと（任意）</label>
+                              <textarea rows={2} value={joinNote} onChange={(e) => setJoinNote(e.target.value)}
+                                placeholder="例：予算は月4万円台／自転車で通いたい"
+                                className={cx(INPUT, "leading-relaxed text-[13.5px] py-2.5")} />
+                              <p className="text-[11.5px] text-mute leading-relaxed">書いておくと、回答する人があなたの条件にも合わせて答えやすくなります。</p>
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => setJoinTarget(null)} className={cx(BTN_SOFT, "flex-1 text-[13px] py-2.5")}>やめる</button>
+                                <button type="button" onClick={() => joinQuestion(p.id)} className={cx(BTN_PRIMARY, "flex-[2] text-[13.5px] py-2.5")}>一緒に待つ</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button type="button"
+                              onClick={() => { setJoinTarget(p.id); setJoinNote(/^・今の状況：\s*\n・困っていること：\s*\n・知りたいこと：\s*$/.test(newContent.trim()) ? "" : newContent.trim()); }}
+                              className="w-full bg-brand text-on-brand font-black rounded-2xl py-2.5 text-[13.5px] press flex items-center justify-center gap-1">
+                              <Icon n="group_add" size={18} />この質問と一緒に回答を待つ
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <p className="text-[11.5px] text-sub">状況がちがうときは、このまま新しく質問できます。</p>
+                  </div>
+                )}
 
                 <div>
                   <div className="flex items-baseline justify-between">
